@@ -79,9 +79,11 @@ export default function Interview() {
     timer.stop();
     setStage(STAGES.ANALYZING);
 
-    const transcript = speech.transcript || "";
+    // Use getTranscript() to avoid stale closure — reads from ref, not state
+    const transcript = speech.getTranscript() || "";
     const stressReport = audio.getStressReport();
     const fillerData = detectFillers(transcript);
+    console.log("Transcript captured:", transcript);
 
     try {
       const evalResult = await evaluateAnswer({

@@ -98,6 +98,11 @@ export default function useSpeechRecognition() {
     setInterimTranscript("");
   }, []);
 
+  // Always returns the latest transcript (avoids stale closure)
+  const getTranscript = useCallback(() => {
+    return finalTranscriptRef.current;
+  }, []);
+
   return {
     isListening,
     transcript,
@@ -106,5 +111,6 @@ export default function useSpeechRecognition() {
     startListening,
     stopListening,
     resetTranscript,
+    getTranscript,
   };
 }
