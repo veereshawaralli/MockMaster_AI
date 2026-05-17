@@ -307,17 +307,20 @@ def get_dashboard_stats() -> dict:
 
     # Most improved topic (comparing first half vs second half of sessions per topic)
     cursor.execute("""
-        SELECT topic,
-               AVG(CASE WHEN rn <= cnt/2 THEN score END) as early_avg,
-               AVG(CASE WHEN rn > cnt/2 THEN score END) as late_avg
+        SELECT topic, early_avg, late_avg
         FROM (
-            SELECT a.score, s.topic,
-                   ROW_NUMBER() OVER (PARTITION BY s.topic ORDER BY a.created_at) as rn,
-                   COUNT(*) OVER (PARTITION BY s.topic) as cnt
-            FROM answers a JOIN sessions s ON a.session_id = s.id
-        )
-        WHERE cnt >= 4
-        GROUP BY topic
+            SELECT topic,
+                   AVG(CASE WHEN rn <= cnt/2 THEN score END) as early_avg,
+                   AVG(CASE WHEN rn > cnt/2 THEN score END) as late_avg
+            FROM (
+                SELECT a.score, s.topic,
+                       ROW_NUMBER() OVER (PARTITION BY s.topic ORDER BY a.created_at) as rn,
+                       COUNT(*) OVER (PARTITION BY s.topic) as cnt
+                FROM answers a JOIN sessions s ON a.session_id = s.id
+            ) AS sub1
+            WHERE cnt >= 4
+            GROUP BY topic
+        ) AS sub2
         ORDER BY (late_avg - early_avg) DESC
         LIMIT 1
     """)
