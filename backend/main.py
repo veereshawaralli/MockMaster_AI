@@ -11,7 +11,8 @@ import os
 origins = ["http://localhost:5173", "http://localhost:3000"]
 env_origins = os.getenv("ALLOWED_ORIGINS")
 if env_origins:
-    origins.extend([o.strip() for o in env_origins.split(",")])
+    # Automatically strip trailing slashes to prevent CORS policy blocks
+    origins.extend([o.strip().rstrip("/") for o in env_origins.split(",")])
 
 app.add_middleware(
     CORSMiddleware,
