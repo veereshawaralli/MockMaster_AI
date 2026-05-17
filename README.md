@@ -21,7 +21,7 @@ MockMaster AI is a premium, high-end AI-powered interview practice platform with
 ## 🛠️ Tech Stack
 
 | Layer | Technology | Purpose |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | **Frontend** | React (Vite) + Recharts | Sleek interactive user interface |
 | **Backend** | Python FastAPI | High-performance async/sync endpoints |
 | **Database** | SQLite + PostgreSQL (psycopg2) | Dynamic dev/prod data store |
