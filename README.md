@@ -20,15 +20,15 @@ MockMaster AI is a premium, high-end AI-powered interview practice platform with
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Cost | Purpose |
+| Layer | Technology | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Frontend** | React (Vite) + Recharts | Free | Sleek interactive user interface |
-| **Backend** | Python FastAPI | Free | High-performance async/sync endpoints |
-| **Database** | SQLite + PostgreSQL (psycopg2) | Free | Dynamic dev/prod data store |
-| **AI Layer** | Gemini API | Free | Real-time evaluations & question generation |
-| **Speech-to-Text** | Web Speech API | Free | Browser-native audio transcription |
-| **Audio Analysis** | Web Audio API | Free | Stress, pitch, pace, and pause metrics |
-| **Hosting** | Render + Vercel | Free | Seamless cloud deployments |
+| **Frontend** | React (Vite) + Recharts | Sleek interactive user interface |
+| **Backend** | Python FastAPI | High-performance async/sync endpoints |
+| **Database** | SQLite + PostgreSQL (psycopg2) | Dynamic dev/prod data store |
+| **AI Layer** | Gemini API | Real-time evaluations & question generation |
+| **Speech-to-Text** | Web Speech API | Browser-native audio transcription |
+| **Audio Analysis** | Web Audio API | Stress, pitch, pace, and pause metrics |
+| **Hosting** | Render + Vercel | Seamless cloud deployments |
 
 ---
 
@@ -61,7 +61,7 @@ Open `http://localhost:5173` in **Chrome or Edge** (required for browser-native 
 
 ---
 
-## ☁️ Production Deployment (100% Free)
+## ☁️ Production Deployment
 
 ### 1. Backend (FastAPI) on Render
 1. Create a **Web Service** on Render and link your repo.
