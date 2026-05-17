@@ -6,9 +6,16 @@ from routes.sessions import router as sessions_router
 
 app = FastAPI(title="AI Mock Interviewer API", version="1.0.0")
 
+import os
+
+origins = ["http://localhost:5173", "http://localhost:3000"]
+env_origins = os.getenv("ALLOWED_ORIGINS")
+if env_origins:
+    origins.extend([o.strip() for o in env_origins.split(",")])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
