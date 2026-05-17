@@ -3,16 +3,85 @@ import json
 import os
 from datetime import datetime
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+IS_POSTGRES = DATABASE_URL is not None
+
+if IS_POSTGRES:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "interview_data.db")
 
 
+class PostgresCursor:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        self._lastrowid = None
+
+    def execute(self, sql, params=None):
+        # Convert SQLite ? placeholder to PostgreSQL %s
+        sql = sql.replace("?", "%s")
+        
+        # Intercept INSERT to get the returning ID for lastrowid
+        is_insert = sql.strip().upper().startswith("INSERT")
+        if is_insert:
+            sql += " RETURNING id"
+            
+        if params:
+            self.cursor.execute(sql, params)
+        else:
+            self.cursor.execute(sql)
+            
+        if is_insert:
+            row = self.cursor.fetchone()
+            self._lastrowid = row['id'] if row else None
+
+    def executescript(self, sql):
+        # Executes multiple queries in sequence for PostgreSQL
+        self.cursor.execute(sql)
+
+    @property
+    def lastrowid(self):
+        return self._lastrowid
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        return dict(row) if row else None
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
+
+class PostgresConnection:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def cursor(self):
+        return PostgresCursor(self.conn.cursor(cursor_factory=RealDictCursor))
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
 def get_db():
-    """Get a database connection with row factory."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    """Get a database connection with row factory (SQLite or PostgreSQL)."""
+    if IS_POSTGRES:
+        conn = psycopg2.connect(DATABASE_URL)
+        return PostgresConnection(conn)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
 
 
 def init_db():
@@ -20,39 +89,75 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.executescript("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            topic TEXT NOT NULL,
-            difficulty TEXT NOT NULL DEFAULT 'Fresher',
-            total_score REAL DEFAULT 0,
-            total_questions INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
+    if IS_POSTGRES:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id SERIAL PRIMARY KEY,
+                topic TEXT NOT NULL,
+                difficulty TEXT NOT NULL DEFAULT 'Fresher',
+                total_score REAL DEFAULT 0,
+                total_questions INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS answers (
+                id SERIAL PRIMARY KEY,
+                session_id INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                transcript TEXT,
+                score INTEGER DEFAULT 0,
+                clarity TEXT,
+                relevance TEXT,
+                confidence_score INTEGER DEFAULT 0,
+                filler_count INTEGER DEFAULT 0,
+                speaking_pace TEXT,
+                avg_pitch REAL DEFAULT 0,
+                pause_count INTEGER DEFAULT 0,
+                improvement_tip TEXT,
+                follow_up_question TEXT,
+                missing_points TEXT DEFAULT '[]',
+                strengths TEXT DEFAULT '[]',
+                fillers TEXT DEFAULT '{}',
+                difficulty TEXT DEFAULT 'Fresher',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+        """)
+    else:
+        cursor.executescript("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic TEXT NOT NULL,
+                difficulty TEXT NOT NULL DEFAULT 'Fresher',
+                total_score REAL DEFAULT 0,
+                total_questions INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
 
-        CREATE TABLE IF NOT EXISTS answers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            question TEXT NOT NULL,
-            transcript TEXT,
-            score INTEGER DEFAULT 0,
-            clarity TEXT,
-            relevance TEXT,
-            confidence_score INTEGER DEFAULT 0,
-            filler_count INTEGER DEFAULT 0,
-            speaking_pace TEXT,
-            avg_pitch REAL DEFAULT 0,
-            pause_count INTEGER DEFAULT 0,
-            improvement_tip TEXT,
-            follow_up_question TEXT,
-            missing_points TEXT DEFAULT '[]',
-            strengths TEXT DEFAULT '[]',
-            fillers TEXT DEFAULT '{}',
-            difficulty TEXT DEFAULT 'Fresher',
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-        );
-    """)
+            CREATE TABLE IF NOT EXISTS answers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                transcript TEXT,
+                score INTEGER DEFAULT 0,
+                clarity TEXT,
+                relevance TEXT,
+                confidence_score INTEGER DEFAULT 0,
+                filler_count INTEGER DEFAULT 0,
+                speaking_pace TEXT,
+                avg_pitch REAL DEFAULT 0,
+                pause_count INTEGER DEFAULT 0,
+                improvement_tip TEXT,
+                follow_up_question TEXT,
+                missing_points TEXT DEFAULT '[]',
+                strengths TEXT DEFAULT '[]',
+                fillers TEXT DEFAULT '{}',
+                difficulty TEXT DEFAULT 'Fresher',
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+        """)
 
     conn.commit()
     conn.close()
