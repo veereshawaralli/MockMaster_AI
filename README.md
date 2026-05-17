@@ -1,36 +1,40 @@
 # 🎤 MockMaster AI — AI Mock Interviewer
 
-An AI-powered interview practice tool that evaluates your spoken answers,
-detects voice stress, and gives real-time feedback with adaptive difficulty.
+MockMaster AI is a premium, high-end AI-powered interview practice platform with a **2050 Cyber-Aesthetic**. It records your spoken answers, uses advanced Web Audio API analysis to determine real-time stress levels, detects filler words, and leverages Gemini API models to provide multi-dimensional scoring and constructive feedback with adaptive difficulty scaling.
 
-## Features
+---
 
-- 🗣️ **Real-time Speech Recognition** — Browser-native Web Speech API (free, no API key needed)
-- 🤖 **AI Answer Evaluation** — Gemini 1.5 Flash scores clarity, relevance, depth + gives improvement tips
-- 📊 **Voice Stress Analysis** — Web Audio API analyzes pitch, pace, pauses for confidence scoring
-- 🚫 **Filler Word Detection** — Detects "um", "uh", "like", "basically" etc. in real-time
-- 🎯 **Adaptive Difficulty** — Automatically scales Fresher → Mid → Senior → Staff based on scores
-- 📈 **Progress Dashboard** — Track scores, view trends, compare topics with interactive charts
-- 🌊 **Live Waveform Visualizer** — Real-time audio visualization during recording
-- ⏱️ **Answer Timer** — Visual timer with recommended duration and color-coded progress
+## 🚀 Key Premium Features
 
-## Tech Stack
+*   🤖 **AI Question Generation & Evaluation** — Uses a custom fallback chain (`gemini-2.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-2.5-flash`) to generate contextual technical questions and score answers on Clarity, Relevance, Depth, and Strengths.
+*   🔄 **Gemini Rate-Limit Resilience** — Automatically switches between multiple high-performance Gemini models to prevent `429 Quota Exceeded` errors.
+*   🗣️ **Real-time Speech Recognition** — Free, browser-native Web Speech API.
+*   📊 **Voice Stress & Speech Analysis** — Real-time Web Audio API pitch, speaking pace, and pause tracking to calculate candidate confidence scores.
+*   ⚡ **CORS-Protected Cloud Ready** — Dynamic CORS origin matching with trailing-slash auto-stripping for secure, production-grade API hosting.
+*   🗄️ **Dual-Database Engine** — Runs zero-setup local **SQLite** for development and dynamically swaps to **PostgreSQL** in production (like Supabase, Neon, or Render Postgres) when a `DATABASE_URL` is detected.
+*   🎯 **Adaptive Difficulty** — Dynamically adjusts question tiers (**Fresher ➔ Mid ➔ Senior ➔ Staff**) based on your performance.
+*   📈 **3D Hologram Dashboard** — Stupendous cyber-dashboard tracking session history, confidence trends, per-topic averages, and most improved categories with interactive responsive charts.
+*   🌊 **Dynamic Waveform Visualizer** — Optimally-engineered GPU-stable canvas visualizer displaying active audio waves.
 
-| Layer | Technology | Cost |
-|-------|-----------|------|
-| Frontend | React + Vite | Free |
-| Backend | Python FastAPI | Free |
-| Speech-to-Text | Web Speech API | Free |
-| AI Evaluation | Gemini API (free tier) | Free |
-| Voice Analysis | Web Audio API | Free |
-| Database | SQLite | Free |
-| Charts | Recharts | Free |
-| Deployment | Render + Vercel | Free |
+---
 
-## Quick Start
+## 🛠️ Tech Stack
 
-### Backend
+| Layer | Technology | Cost | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React (Vite) + Recharts | Free | Sleek interactive user interface |
+| **Backend** | Python FastAPI | Free | High-performance async/sync endpoints |
+| **Database** | SQLite + PostgreSQL (psycopg2) | Free | Dynamic dev/prod data store |
+| **AI Layer** | Gemini API | Free | Real-time evaluations & question generation |
+| **Speech-to-Text** | Web Speech API | Free | Browser-native audio transcription |
+| **Audio Analysis** | Web Audio API | Free | Stress, pitch, pace, and pause metrics |
+| **Hosting** | Render + Vercel | Free | Seamless cloud deployments |
 
+---
+
+## 🏃‍♂️ Quick Start (Local Development)
+
+### 1. Backend Setup
 ```bash
 cd backend
 python -m venv venv
@@ -39,64 +43,59 @@ venv\Scripts\activate          # Windows
 
 pip install -r requirements.txt
 
-# Add your Gemini API key
+# Add your Gemini API key to .env
 echo GEMINI_API_KEY=your_key_here > .env
 
-# Run server
+# Run FastAPI Server
 uvicorn main:app --reload
 ```
 
-### Frontend
-
+### 2. Frontend Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173 in **Chrome or Edge** (required for Speech Recognition).
+Open `http://localhost:5173` in **Chrome or Edge** (required for browser-native speech recognition) and begin practicing!
 
-## How It Works
+---
 
-1. **Choose Topic & Difficulty** — Pick from HR, DSA, System Design, Behavioral, Frontend, Backend
-2. **Answer the Question** — Click record, speak your answer naturally
-3. **Real-time Feedback** — See live waveform, filler count, and transcript as you speak
-4. **AI Evaluation** — Get instant scores, missing points, strengths, and improvement tips
-5. **Adaptive Progression** — Score 80+? Questions get harder. Below 40? They get easier.
-6. **Track Progress** — View trends, topic performance, and session history on the dashboard
+## ☁️ Production Deployment (100% Free)
 
-## Deployment (Free)
+### 1. Backend (FastAPI) on Render
+1. Create a **Web Service** on Render and link your repo.
+2. Set the **Root Directory** to `backend`.
+3. Set the build and start commands:
+   * **Build Command**: `pip install -r requirements.txt`
+   * **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. In the **Environment** tab, add your variables:
+   * `GEMINI_API_KEY` = `[Your Gemini Key]`
+   * `DATABASE_URL` = `[Your Neon or Render PostgreSQL Connection URL]`
+   * `ALLOWED_ORIGINS` = `[Your Deployed Vercel Frontend URL]`
 
-### Backend → Render.app
+### 2. Frontend (React) on Vercel
+1. Create a **Project** on Vercel and link your repo.
+2. Set the **Root Directory** to `frontend`.
+3. Vercel will automatically detect `Vite` preset.
+4. Add the following **Environment Variable**:
+   * `VITE_API_URL` = `[Your Deployed Render Backend URL]`
 
-```bash
-cd backend
-echo "web: uvicorn main:app --host 0.0.0.0 --port \$PORT" > Procfile
-# Push to GitHub → Connect Render → Add GEMINI_API_KEY env var
-```
+---
 
-### Frontend → Vercel
-
-```bash
-cd frontend
-# Add VITE_API_URL=https://your-render-url.onrender.com to Vercel env vars
-# Push to GitHub → Connect Vercel → Done
-```
-
-## API Endpoints
+## 📡 Core API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/sessions` | Create interview session |
-| GET | `/api/sessions` | List all sessions |
-| GET | `/api/sessions/:id` | Get session detail |
-| DELETE | `/api/sessions/:id` | Delete session |
-| POST | `/api/evaluate` | Evaluate an answer |
-| POST | `/api/question` | Get a question |
-| GET | `/api/dashboard` | Get dashboard stats |
-| GET | `/api/topics` | List available topics |
-| GET | `/api/difficulties` | List difficulty levels |
+| :--- | :--- | :--- |
+| **POST** | `/api/sessions` | Create a new mock interview session |
+| **GET** | `/api/sessions` | List all previous interview sessions |
+| **GET** | `/api/sessions/{id}` | Get detailed question-by-question session breakdown |
+| **DELETE** | `/api/sessions/{id}` | Delete a session and its answer records |
+| **POST** | `/api/evaluate` | Run AI evaluation on spoken candidate answers |
+| **POST** | `/api/question` | Request a calibrated AI question (excludes previous questions) |
+| **GET** | `/api/dashboard` | Get dashboard statistics & aggregated progress charts |
 
-## License
+---
 
+## 📜 License
 MIT
