@@ -8,7 +8,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Enforce strict JSON output from Gemini
 model = genai.GenerativeModel(
-    "gemini-1.5-flash",
+    "gemini-2.5-flash",
     generation_config={"response_mime_type": "application/json"}
 )
 

@@ -4,6 +4,13 @@ Supports adaptive difficulty progression.
 """
 
 import random
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+generation_model = genai.GenerativeModel("gemini-2.5-flash")
 
 QUESTIONS = {
     "HR": {
@@ -211,10 +218,47 @@ DIFFICULTY_ORDER = ["Fresher", "Mid", "Senior", "Staff"]
 
 def get_question(topic: str, difficulty: str = "Fresher", exclude: list = None) -> dict:
     """
-    Get a random question for the given topic and difficulty.
-    Excludes previously asked questions.
+    Get an AI-generated interview question for the given topic and difficulty.
+    Falls back to static question bank if AI generation fails.
     """
     exclude = exclude or []
+    
+    # Try AI generation first
+    try:
+        difficulty_context = ""
+        if difficulty == "Fresher":
+            difficulty_context = "Focus on fundamental concepts, basic definitions, and simple, straightforward problem-solving suitable for an entry-level candidate. Do not ask complex algorithmic puzzles or advanced system design."
+        elif difficulty == "Mid":
+            difficulty_context = "Focus on practical application, trade-offs, and intermediate problem-solving."
+        elif difficulty == "Senior":
+            difficulty_context = "Focus on architectural design, complex edge cases, and deep theoretical understanding."
+        elif difficulty == "Staff":
+            difficulty_context = "Focus on open-ended scenarios involving massive scale, cross-team impact, and long-term technical strategy."
+
+        prompt = (
+            f"Generate a single, realistic {difficulty}-level interview question for a {topic} role. "
+            f"{difficulty_context} "
+            f"Return ONLY the question text itself, without any introduction, quotes, or conversational filler."
+        )
+        if exclude:
+            # Tell Gemini to avoid recently asked questions
+            prompt += f"\n\nDo NOT ask any of these exact questions:\n" + "\n".join(f"- {q}" for q in exclude[-5:])
+            
+        response = generation_model.generate_content(prompt)
+        question_text = response.text.strip().strip('"').strip("'")
+        
+        if question_text and len(question_text) > 10:
+            return {
+                "question": question_text,
+                "topic": topic,
+                "difficulty": difficulty,
+                "source": "ai" # useful flag for frontend or debugging
+            }
+    except Exception as e:
+        print(f"AI Question Generation failed: {e}")
+        pass # Fall back to static questions
+        
+    # Fallback: Static questions
     topic_questions = QUESTIONS.get(topic, {})
     level_questions = topic_questions.get(difficulty, [])
 
@@ -225,15 +269,17 @@ def get_question(topic: str, difficulty: str = "Fresher", exclude: list = None) 
 
     if not available:
         return {
-            "question": "No more questions available for this topic and difficulty.",
+            "question": f"Can you explain your experience with {topic}?",
             "topic": topic,
             "difficulty": difficulty,
+            "source": "fallback"
         }
 
     return {
         "question": random.choice(available),
         "topic": topic,
         "difficulty": difficulty,
+        "source": "static"
     }
 
 

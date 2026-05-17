@@ -31,6 +31,7 @@ export default function Interview() {
   const [scores, setScores] = useState([]);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Hooks
   const speech = useSpeechRecognition();
@@ -40,6 +41,7 @@ export default function Interview() {
   // Start interview session
   const startSession = async () => {
     try {
+      setIsLoading(true);
       setError(null);
       const data = await createSession(topic, difficulty);
       setSessionId(data.session_id);
@@ -48,6 +50,8 @@ export default function Interview() {
     } catch (err) {
       setError("Failed to start session. Is the backend running?");
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -207,9 +211,9 @@ export default function Interview() {
             <button
               className="btn btn-primary btn-lg"
               onClick={startSession}
-              disabled={!speech.isSupported}
+              disabled={!speech.isSupported || isLoading}
             >
-              🚀 Begin Interview
+              {isLoading ? "⏳ Generating AI Question..." : "🚀 Begin Interview"}
             </button>
           </div>
         </div>

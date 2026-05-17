@@ -15,9 +15,15 @@ export default function WaveformVisualizer({ data, isActive }) {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+    const expectedWidth = rect.width * dpr;
+    const expectedHeight = rect.height * dpr;
+    
+    // Only resize if necessary to prevent canvas context crashing
+    if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) {
+      canvas.width = expectedWidth;
+      canvas.height = expectedHeight;
+      ctx.scale(dpr, dpr);
+    }
 
     const width = rect.width;
     const height = rect.height;
@@ -98,7 +104,7 @@ export default function WaveformVisualizer({ data, isActive }) {
 
   return (
     <div className="waveform-container">
-      <canvas ref={canvasRef} className="waveform-canvas" />
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
     </div>
   );
 }

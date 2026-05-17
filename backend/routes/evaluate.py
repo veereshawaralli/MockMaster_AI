@@ -28,7 +28,7 @@ class QuestionRequest(BaseModel):
 
 
 @router.post("/evaluate")
-async def evaluate(req: EvaluateRequest):
+def evaluate(req: EvaluateRequest):
     if not req.transcript or len(req.transcript.strip()) < 3:
         return {"evaluation": {"score": 0, "clarity": "Poor", "relevance": "Poor", "depth": "Shallow", "missing_points": ["No answer provided"], "strengths": [], "improvement_tip": "Provide a clear answer.", "follow_up_question": req.question, "ideal_answer_summary": ""}, "saved": False}
 
@@ -50,7 +50,7 @@ async def evaluate(req: EvaluateRequest):
 
 
 @router.post("/question")
-async def next_question(req: QuestionRequest):
+def next_question(req: QuestionRequest):
     return get_question(req.topic, req.difficulty, req.exclude)
 
 
