@@ -36,6 +36,11 @@ export default function StressMeter({ score = 50, label = "Confidence", size = 1
           width: size,
           height: size,
           background: `radial-gradient(circle, ${getGlow()} 0%, transparent 70%)`,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto",
         }}
       >
         <svg width={size} height={size} style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
@@ -66,10 +71,10 @@ export default function StressMeter({ score = 50, label = "Confidence", size = 1
           />
         </svg>
         <div style={{ textAlign: "center", zIndex: 1 }}>
-          <div className="meter-value" style={{ color: getColor() }}>
+          <div className="meter-value" style={{ color: getColor(), fontSize: "2rem", fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
             {score}%
           </div>
-          <div className="meter-label">{getLabel()}</div>
+          <div className="meter-label" style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-secondary)", fontWeight: 600 }}>{getLabel()}</div>
         </div>
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.5rem" }}>

@@ -164,10 +164,10 @@ export default function Interview() {
     <div className="page-container">
       {error && (
         <div className="card" style={{
-          borderColor: "rgba(239, 68, 68, 0.3)",
+          borderColor: "var(--accent-red)",
           marginBottom: "1.5rem",
           textAlign: "center",
-          background: "rgba(239, 68, 68, 0.08)"
+          background: "var(--accent-red-bg)"
         }}>
           <p style={{ color: "var(--accent-red)" }}>⚠️ {error}</p>
           <button
@@ -189,7 +189,7 @@ export default function Interview() {
           </div>
 
           {!speech.isSupported && (
-            <div className="card" style={{ textAlign: "center", marginBottom: "1.5rem", borderColor: "rgba(245, 158, 11, 0.3)" }}>
+            <div className="card" style={{ textAlign: "center", marginBottom: "1.5rem", borderColor: "var(--accent-amber)", background: "var(--accent-amber-bg)" }}>
               <p style={{ color: "var(--accent-amber)" }}>
                 ⚠️ Speech Recognition is not supported in your browser. Please use Chrome or Edge.
               </p>

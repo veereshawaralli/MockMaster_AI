@@ -8,9 +8,9 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: "rgba(17, 17, 39, 0.95)",
-      border: "1px solid rgba(255,255,255,0.1)",
-      borderRadius: 8,
+      background: "var(--bg-card)",
+      border: "1px solid var(--border-subtle)",
+      borderRadius: 6,
       padding: "0.75rem 1rem",
       fontSize: "0.85rem"
     }}>
@@ -45,10 +45,10 @@ export function ScoreTrendChart({ data }) {
           <Line
             type="monotone"
             dataKey="Score"
-            stroke="#7c3aed"
-            strokeWidth={3}
-            dot={{ fill: "#7c3aed", strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 7, fill: "#3b82f6" }}
+            stroke="var(--text-primary)"
+            strokeWidth={2}
+            dot={{ fill: "var(--bg-primary)", stroke: "var(--text-primary)", strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, fill: "var(--text-primary)" }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -76,8 +76,8 @@ export function TopicBarChart({ data }) {
           <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={12} />
           <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ fontSize: 12, color: "var(--text-muted)" }} />
-          <Bar dataKey="Avg Score" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="Best Score" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="Avg Score" fill="var(--text-primary)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="Best Score" fill="var(--text-secondary)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -100,7 +100,7 @@ export function TopicRadarChart({ data }) {
           <PolarGrid stroke="rgba(255,255,255,0.08)" />
           <PolarAngleAxis dataKey="topic" tick={{ fill: "var(--text-muted)", fontSize: 12 }} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-          <Radar name="Score" dataKey="score" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.2} strokeWidth={2} />
+          <Radar name="Score" dataKey="score" stroke="var(--text-primary)" fill="var(--text-primary)" fillOpacity={0.1} strokeWidth={2} />
         </RadarChart>
       </ResponsiveContainer>
     </div>

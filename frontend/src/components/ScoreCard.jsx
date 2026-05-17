@@ -1,4 +1,10 @@
 import StressMeter from "./StressMeter";
+import use3DTilt from "../hooks/use3DTilt";
+
+const TiltStatCard = ({ children }) => {
+  const tiltRef = use3DTilt({ max: 15, scale: 1.05, glare: true });
+  return <div ref={tiltRef} className="stat-card tilt-card">{children}</div>;
+};
 
 /**
  * Comprehensive score card with evaluation results.
@@ -25,24 +31,24 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
     <div className="animate-slide-up" style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* Score Header */}
       <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-        <div className="stat-card">
+        <TiltStatCard>
           <div className="stat-value" style={{ color: getScoreColor(evaluation.score) }}>
             {evaluation.score}
           </div>
           <div className="stat-label">Answer Score</div>
-        </div>
-        <div className="stat-card">
+        </TiltStatCard>
+        <TiltStatCard>
           <div className="stat-value" style={{ color: getScoreColor(stress.confidence_score) }}>
             {stress.confidence_score}%
           </div>
           <div className="stat-label">Confidence</div>
-        </div>
-        <div className="stat-card">
+        </TiltStatCard>
+        <TiltStatCard>
           <div className="stat-value" style={{ color: fillers.total > 5 ? "var(--accent-red)" : fillers.total > 2 ? "var(--accent-amber)" : "var(--accent-green)" }}>
             {fillers.total}
           </div>
           <div className="stat-label">Filler Words</div>
-        </div>
+        </TiltStatCard>
       </div>
 
       <div className="two-col">
@@ -83,7 +89,7 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
 
           {/* Missing Points */}
           {evaluation.missing_points?.length > 0 && (
-            <div className="card" style={{ marginBottom: "1rem", borderColor: "rgba(239, 68, 68, 0.2)" }}>
+            <div className="card" style={{ marginBottom: "1rem", borderColor: "var(--accent-red)", background: "var(--accent-red-bg)" }}>
               <div className="score-header">❌ Missing Points</div>
               <ul className="feedback-list">
                 {evaluation.missing_points.map((p, i) => (
@@ -97,7 +103,7 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
           )}
 
           {/* Improvement Tip */}
-          <div className="card" style={{ marginBottom: "1rem", borderColor: "rgba(124, 58, 237, 0.2)" }}>
+          <div className="card" style={{ marginBottom: "1rem", borderColor: "var(--accent-purple)", background: "var(--accent-purple-bg)" }}>
             <div className="score-header">💡 Improvement Tip</div>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.6 }}>
               {evaluation.improvement_tip}
@@ -142,7 +148,7 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
 
       {/* Follow-up Question */}
       {evaluation.follow_up_question && (
-        <div className="card" style={{ marginBottom: "1.5rem", borderColor: "rgba(6, 182, 212, 0.2)" }}>
+        <div className="card" style={{ marginBottom: "1.5rem", borderColor: "var(--accent-blue)", background: "var(--accent-blue-bg)" }}>
           <div className="score-header">🔁 Follow-up Question</div>
           <p style={{ color: "var(--text-primary)", fontSize: "1rem", fontWeight: 500 }}>
             {evaluation.follow_up_question}

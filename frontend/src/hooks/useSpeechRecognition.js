@@ -11,6 +11,7 @@ export default function useSpeechRecognition() {
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef("");
+  const interimTranscriptRef = useRef("");
 
   useEffect(() => {
     const SpeechRecognition =
@@ -36,6 +37,7 @@ export default function useSpeechRecognition() {
         }
 
         finalTranscriptRef.current = final;
+        interimTranscriptRef.current = interim;
         setTranscript(final);
         setInterimTranscript(interim);
       };
@@ -72,6 +74,7 @@ export default function useSpeechRecognition() {
   const startListening = useCallback(() => {
     if (recognitionRef.current) {
       finalTranscriptRef.current = "";
+      interimTranscriptRef.current = "";
       setTranscript("");
       setInterimTranscript("");
       recognitionRef.current._shouldListen = true;
@@ -94,13 +97,15 @@ export default function useSpeechRecognition() {
 
   const resetTranscript = useCallback(() => {
     finalTranscriptRef.current = "";
+    interimTranscriptRef.current = "";
     setTranscript("");
     setInterimTranscript("");
   }, []);
 
   // Always returns the latest transcript (avoids stale closure)
   const getTranscript = useCallback(() => {
-    return finalTranscriptRef.current;
+    const fullText = (finalTranscriptRef.current + " " + interimTranscriptRef.current).trim();
+    return fullText;
   }, []);
 
   return {

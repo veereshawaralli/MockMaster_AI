@@ -1,12 +1,16 @@
 import google.generativeai as genai
 import os
 import json
-import re
 from dotenv import load_dotenv
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+
+# Enforce strict JSON output from Gemini
+model = genai.GenerativeModel(
+    "gemini-1.5-flash",
+    generation_config={"response_mime_type": "application/json"}
+)
 
 
 def evaluate_answer(question: str, answer: str, topic: str, difficulty: str = "Fresher") -> dict:
@@ -23,7 +27,7 @@ Candidate's Answer: {answer}
 
 Evaluate the answer based on the difficulty level. For "{difficulty}" level, adjust your expectations accordingly.
 
-Return ONLY a valid JSON object (no markdown fences, no extra text) with exactly these keys:
+Return ONLY a valid JSON object with exactly these keys:
 {{
   "score": <integer 0-100>,
   "clarity": "<Good|Average|Poor>",
@@ -41,12 +45,6 @@ Be constructive but honest. If the answer is empty or gibberish, give a score of
     try:
         response = model.generate_content(prompt)
         text = response.text.strip()
-
-        # Strip markdown code fences if present
-        if text.startswith("```"):
-            text = re.sub(r"^```(?:json)?\s*", "", text)
-            text = re.sub(r"\s*```$", "", text)
-
         result = json.loads(text)
 
         # Ensure all required keys exist with defaults
