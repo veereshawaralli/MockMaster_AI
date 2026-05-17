@@ -142,17 +142,8 @@ export default function Interview() {
       setDifficulty(newDifficulty);
     }
 
-    // Use follow-up question or fetch new one
-    if (result?.evaluation?.follow_up_question) {
-      setCurrentQuestion({
-        question: result.evaluation.follow_up_question,
-        topic,
-        difficulty: newDifficulty,
-      });
-      setQuestionNumber((n) => n + 1);
-    } else {
-      await fetchQuestion(topic, newDifficulty, askedQuestions);
-    }
+    // Always fetch a new, unique question from the question bank
+    await fetchQuestion(topic, newDifficulty, askedQuestions);
 
     setResult(null);
     setStage(STAGES.READY);
