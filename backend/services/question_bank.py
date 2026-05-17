@@ -244,7 +244,20 @@ def get_question(topic: str, difficulty: str = "Fresher", exclude: list = None) 
             # Tell Gemini to avoid recently asked questions
             prompt += f"\n\nDo NOT ask any of these exact questions:\n" + "\n".join(f"- {q}" for q in exclude[-5:])
             
-        response = generation_model.generate_content(prompt)
+        # Fallback model mechanism to handle 429 Quota Exceeded errors
+        response = None
+        errors = []
+        for model_name in ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"]:
+            try:
+                temp_model = genai.GenerativeModel(model_name)
+                response = temp_model.generate_content(prompt)
+                break
+            except Exception as e:
+                errors.append(f"{model_name}: {e}")
+                
+        if not response:
+            raise Exception(f"All models failed to generate content. Errors: {errors}")
+            
         question_text = response.text.strip().strip('"').strip("'")
         
         if question_text and len(question_text) > 10:

@@ -43,7 +43,22 @@ Return ONLY a valid JSON object with exactly these keys:
 Be constructive but honest. If the answer is empty or gibberish, give a score of 0.
 """
     try:
-        response = model.generate_content(prompt)
+        response = None
+        errors = []
+        for model_name in ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"]:
+            try:
+                temp_model = genai.GenerativeModel(
+                    model_name,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                response = temp_model.generate_content(prompt)
+                break
+            except Exception as e:
+                errors.append(f"{model_name}: {e}")
+                
+        if not response:
+            raise Exception(f"All models failed for evaluation. Errors: {errors}")
+            
         text = response.text.strip()
         result = json.loads(text)
 
