@@ -2,14 +2,19 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 /**
  * Hook for real-time audio analysis using Web Audio API.
- * Provides waveform data, pitch estimation, pause detection, and volume levels.
+ * Provides pitch estimation, pause detection, and volume levels.
+ *
+ * Performance: the rAF loop does NOT push data through React state on every
+ * frame. The raw AnalyserNode is exposed via `analyserRef` so the waveform
+ * canvas can read it directly (see WaveformVisualizer), and the human-readable
+ * stats (volume/pitch/pauseCount) are throttled to ~10fps to avoid forcing a
+ * full component re-render 60 times per second.
  */
 export default function useAudioAnalyzer() {
   const [isActive, setIsActive] = useState(false);
   const [volume, setVolume] = useState(0);
   const [pitch, setPitch] = useState(0);
   const [pauseCount, setPauseCount] = useState(0);
-  const [waveformData, setWaveformData] = useState(new Uint8Array(128));
 
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
@@ -18,6 +23,11 @@ export default function useAudioAnalyzer() {
   const silenceTimerRef = useRef(null);
   const isSilentRef = useRef(false);
   const pauseCountRef = useRef(0);
+  const pitchRef = useRef(0);
+  const lastUiUpdateRef = useRef(0);
+
+  // Throttle React state updates for on-screen stats to ~10fps.
+  const UI_INTERVAL_MS = 100;
 
   const startAnalyzing = useCallback(async () => {
     try {
@@ -35,46 +45,42 @@ export default function useAudioAnalyzer() {
       analyserRef.current = analyser;
 
       pauseCountRef.current = 0;
+      pitchRef.current = 0;
+      lastUiUpdateRef.current = 0;
       setPauseCount(0);
       setIsActive(true);
 
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      const timeData = new Uint8Array(analyser.fftSize);
+      const freqData = new Uint8Array(bufferLength); // reused every frame — no per-frame allocation
+      const nyquist = audioContext.sampleRate / 2;
 
       const analyze = () => {
         if (!analyserRef.current) return;
+        animFrameRef.current = requestAnimationFrame(analyze);
 
-        // Waveform (time domain)
-        analyser.getByteTimeDomainData(timeData);
-        setWaveformData(new Uint8Array(timeData));
+        analyser.getByteFrequencyData(freqData);
 
-        // Volume (RMS)
-        analyser.getByteFrequencyData(dataArray);
+        // Volume (average magnitude) + dominant frequency (pitch) in one pass.
         let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / bufferLength;
-        const normalizedVolume = Math.min(100, Math.round((avg / 255) * 200));
-        setVolume(normalizedVolume);
-
-        // Simple pitch estimation (dominant frequency)
         let maxVal = 0;
         let maxIndex = 0;
         for (let i = 0; i < bufferLength; i++) {
-          if (dataArray[i] > maxVal) {
-            maxVal = dataArray[i];
+          const val = freqData[i];
+          sum += val;
+          if (val > maxVal) {
+            maxVal = val;
             maxIndex = i;
           }
         }
-        const nyquist = audioContext.sampleRate / 2;
+        const avg = sum / bufferLength;
+        const normalizedVolume = Math.min(100, Math.round((avg / 255) * 200));
+
         const estimatedPitch = (maxIndex / bufferLength) * nyquist;
         if (estimatedPitch > 50 && estimatedPitch < 1000) {
-          setPitch(Math.round(estimatedPitch));
+          pitchRef.current = Math.round(estimatedPitch);
         }
 
-        // Pause detection
+        // Pause detection — cheap, ref-based, runs every frame for responsiveness.
         if (normalizedVolume < 8) {
           if (!isSilentRef.current) {
             isSilentRef.current = true;
@@ -91,7 +97,13 @@ export default function useAudioAnalyzer() {
           }
         }
 
-        animFrameRef.current = requestAnimationFrame(analyze);
+        // Throttle state-driven re-renders to ~10fps.
+        const now = performance.now();
+        if (now - lastUiUpdateRef.current >= UI_INTERVAL_MS) {
+          lastUiUpdateRef.current = now;
+          setVolume(normalizedVolume);
+          setPitch(pitchRef.current);
+        }
       };
 
       analyze();
@@ -103,9 +115,11 @@ export default function useAudioAnalyzer() {
   const stopAnalyzing = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
     }
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -117,11 +131,12 @@ export default function useAudioAnalyzer() {
     analyserRef.current = null;
     audioContextRef.current = null;
     streamRef.current = null;
+    isSilentRef.current = false;
     setIsActive(false);
   }, []);
 
   const getStressReport = useCallback(() => {
-    const avgPitch = pitch;
+    const avgPitch = pitchRef.current;
     let confidence = 100;
 
     if (avgPitch > 350) confidence -= 20; // High pitch = nervous
@@ -142,7 +157,7 @@ export default function useAudioAnalyzer() {
       pause_count: pauseCountRef.current,
       speaking_pace: pace,
     };
-  }, [pitch]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -155,7 +170,7 @@ export default function useAudioAnalyzer() {
     volume,
     pitch,
     pauseCount,
-    waveformData,
+    analyserRef,
     startAnalyzing,
     stopAnalyzing,
     getStressReport,

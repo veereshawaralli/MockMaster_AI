@@ -159,7 +159,7 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
       {/* Actions */}
       <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
         <button className="btn btn-primary btn-lg" onClick={onNextQuestion}>
-          Next Question →
+          Next Question
         </button>
         <button className="btn btn-outline btn-lg" onClick={onEndSession}>
           End Session

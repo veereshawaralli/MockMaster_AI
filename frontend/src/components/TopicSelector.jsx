@@ -37,7 +37,7 @@ export default function TopicSelector({
   return (
     <div className="animate-fade-in perspective-container">
       {/* Topic Grid */}
-      <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textAlign: "center", marginBottom: "1.5rem", color: "var(--text-secondary)", fontSize: "1rem", textTransform: "uppercase", letterSpacing: "0.2em" }}>
+      <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textAlign: "center", marginBottom: "1.5rem", color: "var(--text-secondary)", fontSize: "1rem" }}>
         Choose a Topic
       </h3>
       <div className="topic-grid stagger-children">
@@ -53,7 +53,7 @@ export default function TopicSelector({
       </div>
 
       {/* Difficulty Selector */}
-      <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textAlign: "center", marginBottom: "1.5rem", color: "var(--text-secondary)", fontSize: "1rem", textTransform: "uppercase", letterSpacing: "0.2em", marginTop: "1rem" }}>
+      <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", textAlign: "center", marginBottom: "1.5rem", color: "var(--text-secondary)", fontSize: "1rem", marginTop: "1rem" }}>
         Difficulty Level
       </h3>
       <div className="difficulty-row stagger-children">

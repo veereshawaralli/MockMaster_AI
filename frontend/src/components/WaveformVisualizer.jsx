@@ -2,9 +2,13 @@ import { useRef, useEffect } from "react";
 
 /**
  * Real-time waveform visualizer using Canvas.
- * Renders audio waveform data from Web Audio API.
+ *
+ * Runs its own requestAnimationFrame loop and reads the live AnalyserNode
+ * directly from `analyser` (a ref object from useAudioAnalyzer). This keeps
+ * the 60fps rendering entirely out of React's render cycle — nothing here
+ * triggers a component re-render, and no per-frame typed arrays are allocated.
  */
-export default function WaveformVisualizer({ data, isActive }) {
+export default function WaveformVisualizer({ analyser, isActive }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -12,95 +16,105 @@ export default function WaveformVisualizer({ data, isActive }) {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
+    let rafId = null;
+    let cssW = 0;
+    let cssH = 0;
+    let gradient = null;
+    let timeData = null;
 
-    const expectedWidth = rect.width * dpr;
-    const expectedHeight = rect.height * dpr;
-    
-    // Only resize if necessary to prevent canvas context crashing
-    if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) {
-      canvas.width = expectedWidth;
-      canvas.height = expectedHeight;
-      ctx.scale(dpr, dpr);
-    }
+    // Size the backing store to the element (accounting for DPR) once here and
+    // whenever the element resizes — never inside the draw loop, so the loop
+    // never forces a layout/reflow.
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      cssW = rect.width;
+      cssH = rect.height;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      gradient = ctx.createLinearGradient(0, 0, cssW, 0);
+      gradient.addColorStop(0, "#E0A458");
+      gradient.addColorStop(0.5, "#8FB8A8");
+      gradient.addColorStop(1, "#5FAEAB");
+    };
 
-    const width = rect.width;
-    const height = rect.height;
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
 
-    // Clear
-    ctx.clearRect(0, 0, width, height);
-
-    // Background
-    ctx.fillStyle = "rgba(0, 0, 0, 0)";
-    ctx.fillRect(0, 0, width, height);
-
-    if (!data || data.length === 0) {
-      // Draw flat line
+    const drawFlatLine = () => {
       ctx.beginPath();
-      ctx.strokeStyle = "rgba(124, 58, 237, 0.3)";
+      ctx.strokeStyle = "rgba(224, 164, 88, 0.35)";
       ctx.lineWidth = 2;
-      ctx.moveTo(0, height / 2);
-      ctx.lineTo(width, height / 2);
+      ctx.moveTo(0, cssH / 2);
+      ctx.lineTo(cssW, cssH / 2);
       ctx.stroke();
-      return;
-    }
+    };
 
-    // Draw waveform
-    const sliceWidth = width / data.length;
-    let x = 0;
+    const draw = () => {
+      rafId = requestAnimationFrame(draw);
+      if (!cssW || !cssH) return;
 
-    // Glow effect
-    ctx.shadowBlur = isActive ? 15 : 5;
-    ctx.shadowColor = isActive ? "rgba(124, 58, 237, 0.6)" : "rgba(124, 58, 237, 0.2)";
+      ctx.clearRect(0, 0, cssW, cssH);
 
-    // Main wave
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-
-    const gradient = ctx.createLinearGradient(0, 0, width, 0);
-    gradient.addColorStop(0, "#7c3aed");
-    gradient.addColorStop(0.5, "#3b82f6");
-    gradient.addColorStop(1, "#06b6d4");
-    ctx.strokeStyle = gradient;
-
-    for (let i = 0; i < data.length; i++) {
-      const v = data[i] / 128.0;
-      const y = (v * height) / 2;
-
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+      const node = analyser && analyser.current;
+      if (!node) {
+        drawFlatLine();
+        return;
       }
-      x += sliceWidth;
-    }
 
-    ctx.stroke();
-
-    // Mirror wave (subtle)
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.15;
-    ctx.beginPath();
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = 1;
-    x = 0;
-
-    for (let i = 0; i < data.length; i++) {
-      const v = data[i] / 128.0;
-      const y = height - (v * height) / 2;
-
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+      if (!timeData || timeData.length !== node.fftSize) {
+        timeData = new Uint8Array(node.fftSize);
       }
-      x += sliceWidth;
-    }
+      node.getByteTimeDomainData(timeData);
 
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }, [data, isActive]);
+      // Downsample so we stroke at most ~512 points regardless of fftSize.
+      const len = timeData.length;
+      const step = Math.max(1, Math.floor(len / 512));
+      const points = Math.floor(len / step);
+      const sliceWidth = cssW / points;
+
+      // Main wave (with glow)
+      ctx.shadowBlur = isActive ? 6 : 0;
+      ctx.shadowColor = "rgba(224, 164, 88, 0.35)";
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let x = 0;
+      for (let i = 0; i < len; i += step) {
+        const v = timeData[i] / 128.0;
+        const y = (v * cssH) / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+
+      // Mirror wave (subtle, no glow)
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 0.15;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      x = 0;
+      for (let i = 0; i < len; i += step) {
+        const v = timeData[i] / 128.0;
+        const y = cssH - (v * cssH) / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+
+    draw();
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, [analyser, isActive]);
 
   return (
     <div className="waveform-container">

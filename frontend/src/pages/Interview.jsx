@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TopicSelector from "../components/TopicSelector";
 import WaveformVisualizer from "../components/WaveformVisualizer";
@@ -37,6 +37,13 @@ export default function Interview() {
   const speech = useSpeechRecognition();
   const audio = useAudioAnalyzer();
   const timer = useTimer(120);
+
+  // Recompute the live filler count only when the transcript changes, not on
+  // every re-render (the audio stats tick several times a second while recording).
+  const liveFillerCount = useMemo(
+    () => detectFillers(speech.transcript).total,
+    [speech.transcript]
+  );
 
   // Start interview session
   const startSession = async () => {
@@ -275,7 +282,7 @@ export default function Interview() {
           </div>
 
           {/* Waveform */}
-          <WaveformVisualizer data={audio.waveformData} isActive={true} />
+          <WaveformVisualizer analyser={audio.analyserRef} isActive={true} />
 
           {/* Live Stats */}
           <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", margin: "1rem 0" }}>
@@ -293,7 +300,7 @@ export default function Interview() {
             </div>
             <div className="stat-card">
               <div className="stat-value stat-amber" style={{ fontSize: "1.5rem" }}>
-                {detectFillers(speech.transcript).total}
+                {liveFillerCount}
               </div>
               <div className="stat-label">Fillers</div>
             </div>

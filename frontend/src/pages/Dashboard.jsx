@@ -56,7 +56,7 @@ export default function Dashboard() {
     return (
       <div className="loading-overlay" style={{ minHeight: "60vh" }}>
         <div className="loading-spinner"></div>
-        <p>Loading hologram dashboard...</p>
+        <p>Loading your dashboard…</p>
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default function Dashboard() {
     return (
       <div className="page-container">
         <div className="empty-state">
-          <div className="icon 3d-float">⚠️</div>
+          <div className="icon icon-float">⚠️</div>
           <p style={{ color: "var(--accent-amber)" }}>{error}</p>
           <Link to="/" className="btn btn-primary">Go Home</Link>
         </div>
@@ -78,13 +78,13 @@ export default function Dashboard() {
   return (
     <div className="page-container">
       <div className="page-header perspective-container">
-        <h1 className="page-title 3d-float">Progress Dashboard</h1>
+        <h1 className="page-title">Progress Dashboard</h1>
         <p className="page-subtitle" style={{ color: "var(--text-secondary)" }}>Track your interview performance over time</p>
       </div>
 
       {!hasData ? (
         <div className="empty-state animate-fade-in perspective-container">
-          <div className="icon 3d-float" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
+          <div className="icon icon-float" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>No interview sessions yet. Start practicing to see your progress!</p>
           <Link to="/interview" className="btn btn-primary btn-lg">
             🎤 Start First Interview
@@ -136,7 +136,7 @@ export default function Dashboard() {
 
           {/* Session History */}
           <div style={{ marginTop: "3rem" }}>
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.5rem", fontWeight: 600, marginBottom: "1.5rem" }}>
               📋 Session History
             </h2>
             <div className="session-list stagger-children">
@@ -160,13 +160,10 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
                     <div className="session-score" style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
                       fontSize: '2rem',
-                      fontWeight: 700,
                       color: (s.total_score || 0) >= 70 ? "var(--accent-green)"
                         : (s.total_score || 0) >= 40 ? "var(--accent-amber)"
-                        : "var(--accent-red)",
-                      textShadow: `0 0 10px ${(s.total_score || 0) >= 70 ? "var(--accent-green-bg)" : (s.total_score || 0) >= 40 ? "var(--accent-amber-bg)" : "var(--accent-red-bg)"}`
+                        : "var(--accent-red)"
                     }}>
                       {Math.round(s.total_score || 0)}
                     </div>

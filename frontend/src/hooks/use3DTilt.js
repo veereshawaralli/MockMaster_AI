@@ -6,7 +6,12 @@ import { useEffect, useRef } from 'react';
  */
 export default function use3DTilt(options = {}) {
   const ref = useRef(null);
-  const { max = 15, scale = 1.05, speed = 400, glare = false } = options;
+  const { speed = 350 } = options;
+  // Keep the tilt subtle and glare-free — a composed feel, not a novelty
+  // holo-card. Call sites may request larger values; we cap them here.
+  const max = Math.min(options.max ?? 6, 6);
+  const scale = Math.min(options.scale ?? 1.015, 1.02);
+  const glare = false;
 
   useEffect(() => {
     const el = ref.current;

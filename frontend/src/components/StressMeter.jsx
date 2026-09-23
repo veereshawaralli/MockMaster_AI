@@ -66,7 +66,6 @@ export default function StressMeter({ score = 50, label = "Confidence", size = 1
             strokeDashoffset={offset}
             style={{
               transition: "stroke-dashoffset 1s ease, stroke 0.5s ease",
-              filter: `drop-shadow(0 0 6px ${getColor()})`,
             }}
           />
         </svg>
@@ -74,7 +73,7 @@ export default function StressMeter({ score = 50, label = "Confidence", size = 1
           <div className="meter-value" style={{ color: getColor(), fontSize: "2rem", fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
             {score}%
           </div>
-          <div className="meter-label" style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-secondary)", fontWeight: 600 }}>{getLabel()}</div>
+          <div className="meter-label" style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 600 }}>{getLabel()}</div>
         </div>
       </div>
       <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.5rem" }}>

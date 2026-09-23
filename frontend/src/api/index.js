@@ -5,6 +5,43 @@ const API = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+const STORAGE_KEY = "mockmaster-profile";
+
+// Auth: a bearer token issued at login/register rides on every request. The
+// backend derives the user id from this token, so one profile can't read
+// another's data by guessing an id.
+export const setAuthToken = (token) => {
+  if (!token) {
+    delete API.defaults.headers.common["Authorization"];
+  } else {
+    API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  }
+};
+
+// Bootstrap the header from a persisted session at load, so the first request
+// after a refresh (e.g. a restored dashboard) is already authenticated.
+try {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const saved = raw ? JSON.parse(raw) : null;
+  if (saved && saved.token) setAuthToken(saved.token);
+} catch {
+  /* ignore malformed storage */
+}
+
+export const registerUser = (name, password) =>
+  API.post("/api/auth/register", { name, password }).then((r) => r.data);
+
+export const loginUser = (name, password) =>
+  API.post("/api/auth/login", { name, password }).then((r) => r.data);
+
+export const getMe = () => API.get("/api/auth/me").then((r) => r.data);
+
+export const logoutUser = () => API.post("/api/auth/logout").then((r) => r.data);
+
+// Profile names (public) used to populate the login picker.
+export const listUsers = () =>
+  API.get("/api/users").then((r) => r.data.users);
+
 // Sessions
 export const createSession = (topic, difficulty) =>
   API.post("/api/sessions", { topic, difficulty }).then((r) => r.data);

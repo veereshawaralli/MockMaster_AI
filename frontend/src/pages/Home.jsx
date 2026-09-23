@@ -15,12 +15,12 @@ export default function Home() {
   return (
     <div className="page-container animate-fade-in" style={{ padding: "4rem 1rem", textAlign: "center" }}>
       <div style={{ maxWidth: "900px", margin: "0 auto", marginBottom: "4rem" }} className="perspective-container">
-        <h1 className="page-title 3d-float" style={{ animationDuration: '6s' }}>
-          Ace Every Interview<br />with <span className="gradient">AI-Powered</span> Practice
+        <h1 className="page-title">
+          Rehearse the interview<br />before it counts.
         </h1>
-        <p style={{ fontSize: "1.25rem", color: "var(--text-secondary)", marginBottom: "2.5rem", maxWidth: "600px", margin: "0 auto 2.5rem", textShadow: "0 0 10px var(--bg-primary)" }}>
-          Speak your answers, get instant AI feedback on content quality, voice
-          confidence, and filler words. Track your progress and level up.
+        <p className="page-subtitle" style={{ margin: "0.9rem auto 2.5rem" }}>
+          Answer real questions out loud. Get instant, specific feedback on what
+          you said, how confident you sounded, and the filler words to cut.
         </p>
 
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap", perspective: "1000px" }}>
@@ -34,47 +34,41 @@ export default function Home() {
       </div>
 
       {/* Feature Cards in 3D */}
-      <div className="stagger-children" style={{ 
-        display: "grid", 
-        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", 
-        gap: "1.5rem",
-        textAlign: "left",
-        perspective: "1500px"
-      }}>
+      <div className="feature-grid stagger-children" style={{ textAlign: "left" }}>
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🗣️</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>Speech Recognition</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Browser-native speech-to-text transcribes your answers in real-time as you speak.</p>
+          <div className="feature-icon">🗣️</div>
+          <h3 className="feature-title">Speech Recognition</h3>
+          <p className="feature-desc">Browser-native speech-to-text transcribes your answers in real-time as you speak.</p>
         </TiltCard>
         
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🤖</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>AI Evaluation</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Gemini AI scores your answer for clarity, relevance, depth, and provides actionable tips.</p>
+          <div className="feature-icon">🤖</div>
+          <h3 className="feature-title">AI Evaluation</h3>
+          <p className="feature-desc">Gemini AI scores your answer for clarity, relevance, depth, and provides actionable tips.</p>
         </TiltCard>
         
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📊</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>Voice Analysis</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Real-time waveform visualization with pitch, pace, and pause detection for confidence scoring.</p>
+          <div className="feature-icon">📊</div>
+          <h3 className="feature-title">Voice Analysis</h3>
+          <p className="feature-desc">Real-time waveform visualization with pitch, pace, and pause detection for confidence scoring.</p>
         </TiltCard>
         
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🎯</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>Adaptive Difficulty</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Questions automatically adjust from Fresher to Staff level based on your performance.</p>
+          <div className="feature-icon">🎯</div>
+          <h3 className="feature-title">Adaptive Difficulty</h3>
+          <p className="feature-desc">Questions automatically adjust from Fresher to Staff level based on your performance.</p>
         </TiltCard>
         
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📈</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>Progress Tracking</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Track your scores over time, identify weak topics, and see your improvement trajectory.</p>
+          <div className="feature-icon">📈</div>
+          <h3 className="feature-title">Progress Tracking</h3>
+          <p className="feature-desc">Track your scores over time, identify weak topics, and see your improvement trajectory.</p>
         </TiltCard>
         
         <TiltCard>
-          <div className="icon" style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🚫</div>
-          <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.25rem", fontWeight: "700", marginBottom: "0.5rem" }}>Filler Detection</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Detects "um", "uh", "like", "basically" and other filler words to clean up your speech.</p>
+          <div className="feature-icon">🚫</div>
+          <h3 className="feature-title">Filler Detection</h3>
+          <p className="feature-desc">Detects "um", "uh", "like", "basically" and other filler words to clean up your speech.</p>
         </TiltCard>
       </div>
 

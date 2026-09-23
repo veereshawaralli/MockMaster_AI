@@ -1,6 +1,8 @@
 import sqlite3
 import json
 import os
+import hashlib
+import secrets
 from datetime import datetime
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -91,8 +93,18 @@ def init_db():
 
     if IS_POSTGRES:
         cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                password_hash TEXT,
+                salt TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 topic TEXT NOT NULL,
                 difficulty TEXT NOT NULL DEFAULT 'Fresher',
                 total_score REAL DEFAULT 0,
@@ -124,10 +136,27 @@ def init_db():
                 FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
             );
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                id SERIAL PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
     else:
         cursor.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT,
+                salt TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 topic TEXT NOT NULL,
                 difficulty TEXT NOT NULL DEFAULT 'Fresher',
                 total_score REAL DEFAULT 0,
@@ -157,20 +186,172 @@ def init_db():
                 created_at TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL UNIQUE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
         """)
+
+    # Migrate older databases that predate password auth (add columns if missing).
+    if IS_POSTGRES:
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS salt TEXT")
+    else:
+        cursor.execute("PRAGMA table_info(users)")
+        cols = [row["name"] for row in cursor.fetchall()]
+        if "password_hash" not in cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+        if "salt" not in cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN salt TEXT")
 
     conn.commit()
     conn.close()
 
 
-# --- Session CRUD ---
+# --- Password + token auth ---
 
-def create_session(topic: str, difficulty: str = "Fresher") -> int:
+_PBKDF2_ITERATIONS = 200_000
+
+
+def _hash_password(password: str, salt: str) -> str:
+    """Derive a PBKDF2-HMAC-SHA256 hash (hex) from a password and hex salt."""
+    dk = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt), _PBKDF2_ITERATIONS
+    )
+    return dk.hex()
+
+
+def register_user(name: str, password: str) -> dict:
+    """Create a new password-protected profile. Raises ValueError on bad input."""
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Profile name is required")
+    if not password or len(password) < 4:
+        raise ValueError("Password must be at least 4 characters")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE LOWER(name) = LOWER(?)", (name,))
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("That name is already taken. Try logging in instead.")
+
+    salt = secrets.token_hex(16)
+    cursor.execute(
+        "INSERT INTO users (name, password_hash, salt) VALUES (?, ?, ?)",
+        (name, _hash_password(password, salt), salt),
+    )
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": user_id, "name": name}
+
+
+def verify_login(name: str, password: str):
+    """Return {id, name} if name+password match, else None.
+
+    Profiles created before passwords existed have no hash yet; the first login
+    to such a profile claims it by setting the password entered.
+    """
+    name = (name or "").strip()
+    if not name or not password:
+        raise ValueError("Name and password are required")
+
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO sessions (topic, difficulty) VALUES (?, ?)",
-        (topic, difficulty)
+        "SELECT id, name, password_hash, salt FROM users WHERE LOWER(name) = LOWER(?)",
+        (name,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+    user = dict(row)
+
+    if not user.get("password_hash"):
+        # Legacy, password-less profile: set this password now and let them in.
+        salt = secrets.token_hex(16)
+        cursor.execute(
+            "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?",
+            (_hash_password(password, salt), salt, user["id"]),
+        )
+        conn.commit()
+        conn.close()
+        return {"id": user["id"], "name": user["name"]}
+
+    candidate = _hash_password(password, user["salt"])
+    conn.close()
+    if secrets.compare_digest(candidate, user["password_hash"]):
+        return {"id": user["id"], "name": user["name"]}
+    return None
+
+
+def create_token(user_id: int) -> str:
+    """Issue a random opaque session token bound to a user id."""
+    token = secrets.token_urlsafe(32)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO auth_tokens (token, user_id) VALUES (?, ?)", (token, user_id))
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_user_by_token(token: str):
+    """Resolve a bearer token to {id, name}, or None if unknown."""
+    if not token:
+        return None
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT u.id, u.name FROM auth_tokens t JOIN users u ON u.id = t.user_id WHERE t.token = ?",
+        (token,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def delete_token(token: str):
+    """Invalidate a token (logout)."""
+    if not token:
+        return
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM auth_tokens WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+def get_all_users() -> list:
+    """List all profiles with their session counts, for the profile picker."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.id, u.name, u.created_at,
+               COUNT(s.id) as session_count
+        FROM users u
+        LEFT JOIN sessions s ON s.user_id = u.id
+        GROUP BY u.id, u.name, u.created_at
+        ORDER BY u.created_at ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+# --- Session CRUD ---
+
+def create_session(topic: str, difficulty: str = "Fresher", user_id: int = None) -> int:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO sessions (topic, difficulty, user_id) VALUES (?, ?, ?)",
+        (topic, difficulty, user_id)
     )
     session_id = cursor.lastrowid
     conn.commit()
@@ -222,23 +403,26 @@ def save_answer(session_id: int, data: dict) -> int:
     return answer_id
 
 
-def get_all_sessions() -> list:
+def get_all_sessions(user_id: int) -> list:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT id, topic, difficulty, total_score, total_questions, created_at
-        FROM sessions ORDER BY created_at DESC
-    """)
+        FROM sessions WHERE user_id = ? ORDER BY created_at DESC
+    """, (user_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
 
-def get_session_detail(session_id: int) -> dict:
+def get_session_detail(session_id: int, user_id: int = None) -> dict:
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    if user_id is not None:
+        cursor.execute("SELECT * FROM sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
+    else:
+        cursor.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
     session = cursor.fetchone()
     if not session:
         conn.close()
@@ -262,8 +446,8 @@ def get_session_detail(session_id: int) -> dict:
     return result
 
 
-def get_dashboard_stats() -> dict:
-    """Get aggregated statistics for the progress dashboard."""
+def get_dashboard_stats(user_id: int) -> dict:
+    """Get aggregated statistics for one user's progress dashboard."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -273,15 +457,15 @@ def get_dashboard_stats() -> dict:
             COUNT(*) as total_sessions,
             COALESCE(AVG(total_score), 0) as avg_score,
             COALESCE(SUM(total_questions), 0) as total_questions
-        FROM sessions
-    """)
+        FROM sessions WHERE user_id = ?
+    """, (user_id,))
     overall = dict(cursor.fetchone())
 
     # Score trend over time (last 20 sessions)
     cursor.execute("""
         SELECT id, topic, difficulty, total_score, total_questions, created_at
-        FROM sessions ORDER BY created_at DESC LIMIT 20
-    """)
+        FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20
+    """, (user_id,))
     trend = [dict(r) for r in cursor.fetchall()]
     trend.reverse()
 
@@ -293,16 +477,18 @@ def get_dashboard_stats() -> dict:
             COALESCE(AVG(total_score), 0) as avg_score,
             COALESCE(MAX(total_score), 0) as best_score
         FROM sessions
+        WHERE user_id = ?
         GROUP BY topic
-    """)
+    """, (user_id,))
     by_topic = [dict(r) for r in cursor.fetchall()]
 
-    # Average confidence from answers
+    # Average confidence from answers (scoped to this user's sessions)
     cursor.execute("""
-        SELECT COALESCE(AVG(confidence_score), 0) as avg_confidence,
-               COALESCE(AVG(filler_count), 0) as avg_fillers
-        FROM answers
-    """)
+        SELECT COALESCE(AVG(a.confidence_score), 0) as avg_confidence,
+               COALESCE(AVG(a.filler_count), 0) as avg_fillers
+        FROM answers a JOIN sessions s ON a.session_id = s.id
+        WHERE s.user_id = ?
+    """, (user_id,))
     answer_stats = dict(cursor.fetchone())
 
     # Most improved topic (comparing first half vs second half of sessions per topic)
@@ -317,13 +503,14 @@ def get_dashboard_stats() -> dict:
                        ROW_NUMBER() OVER (PARTITION BY s.topic ORDER BY a.created_at) as rn,
                        COUNT(*) OVER (PARTITION BY s.topic) as cnt
                 FROM answers a JOIN sessions s ON a.session_id = s.id
+                WHERE s.user_id = ?
             ) AS sub1
             WHERE cnt >= 4
             GROUP BY topic
         ) AS sub2
         ORDER BY (late_avg - early_avg) DESC
         LIMIT 1
-    """)
+    """, (user_id,))
     most_improved = cursor.fetchone()
 
     conn.close()
@@ -338,10 +525,13 @@ def get_dashboard_stats() -> dict:
     }
 
 
-def delete_session(session_id: int) -> bool:
+def delete_session(session_id: int, user_id: int = None) -> bool:
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    if user_id is not None:
+        cursor.execute("DELETE FROM sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
+    else:
+        cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
     deleted = cursor.rowcount > 0
     conn.commit()
     conn.close()
