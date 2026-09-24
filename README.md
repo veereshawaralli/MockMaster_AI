@@ -10,6 +10,7 @@ MockMaster AI is a premium, high-end AI-powered interview practice platform with
 *   🔄 **Gemini Rate-Limit Resilience** — Automatically switches between multiple high-performance Gemini models to prevent `429 Quota Exceeded` errors.
 *   🗣️ **Real-time Speech Recognition** — Free, browser-native Web Speech API.
 *   📊 **Voice Stress & Speech Analysis** — Real-time Web Audio API pitch, speaking pace, and pause tracking to calculate candidate confidence scores.
+*   🔐 **Private Profiles & Secure Auth** — Password-protected profiles with PBKDF2-hashed credentials and bearer-token sessions. Every interview and dashboard is scoped to the signed-in profile, so one user can never read another's data.
 *   ⚡ **CORS-Protected Cloud Ready** — Dynamic CORS origin matching with trailing-slash auto-stripping for secure, production-grade API hosting.
 *   🗄️ **Dual-Database Engine** — Runs zero-setup local **SQLite** for development and dynamically swaps to **PostgreSQL** in production (like Supabase, Neon, or Render Postgres) when a `DATABASE_URL` is detected.
 *   🎯 **Adaptive Difficulty** — Dynamically adjusts question tiers (**Fresher ➔ Mid ➔ Senior ➔ Staff**) based on your performance.
@@ -85,10 +86,16 @@ Open `http://localhost:5173` in **Chrome or Edge** (required for browser-native 
 
 ## 📡 Core API Endpoints
 
+> 🔐 All session and dashboard routes require an `Authorization: Bearer <token>` header issued by `/api/auth/login` or `/api/auth/register`. Requests without a valid token receive `401`, and every query is scoped to that token's profile.
+
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| **POST** | `/api/auth/register` | Create a password-protected profile; returns a bearer token |
+| **POST** | `/api/auth/login` | Authenticate an existing profile; returns a bearer token |
+| **GET** | `/api/auth/me` | Resolve the profile for the current bearer token |
+| **POST** | `/api/auth/logout` | Invalidate the current bearer token |
 | **POST** | `/api/sessions` | Create a new mock interview session |
-| **GET** | `/api/sessions` | List all previous interview sessions |
+| **GET** | `/api/sessions` | List the signed-in profile's previous interview sessions |
 | **GET** | `/api/sessions/{id}` | Get detailed question-by-question session breakdown |
 | **DELETE** | `/api/sessions/{id}` | Delete a session and its answer records |
 | **POST** | `/api/evaluate` | Run AI evaluation on spoken candidate answers |
