@@ -38,10 +38,6 @@ export const getMe = () => API.get("/api/auth/me").then((r) => r.data);
 
 export const logoutUser = () => API.post("/api/auth/logout").then((r) => r.data);
 
-// Profile names (public) used to populate the login picker.
-export const listUsers = () =>
-  API.get("/api/users").then((r) => r.data.users);
-
 // Sessions
 export const createSession = (topic, difficulty) =>
   API.post("/api/sessions", { topic, difficulty }).then((r) => r.data);

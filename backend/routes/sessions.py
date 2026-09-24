@@ -6,7 +6,6 @@ from database import (
     get_session_detail,
     get_dashboard_stats,
     delete_session,
-    get_all_users,
     get_user_by_token,
 )
 
@@ -31,13 +30,6 @@ def require_user(authorization):
 class CreateSessionRequest(BaseModel):
     topic: str
     difficulty: str = "Fresher"
-
-
-# --- Profiles (names only; used to populate the login picker) ---
-
-@router.get("/users")
-async def list_users():
-    return {"users": get_all_users()}
 
 
 # --- Sessions (scoped to the authenticated profile) ---

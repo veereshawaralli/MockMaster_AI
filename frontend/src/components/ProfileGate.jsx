@@ -1,45 +1,25 @@
-import { useEffect, useRef, useState } from "react";
-import { listUsers, loginUser, registerUser } from "../api";
+import { useState } from "react";
+import { loginUser, registerUser } from "../api";
 import { useUser } from "../context/UserContext";
 
 // Full-screen auth gate. Renders children only once a session is active;
-// otherwise it lets the user log in to an existing profile or create a new,
-// password-protected one. The backend binds every request to the returned
-// token, so one profile can't reach another's sessions or dashboard.
+// otherwise it asks for a name and password to log in or create a profile. We
+// deliberately never reveal which profiles exist — the form takes credentials
+// and nothing else. The backend binds every request to the returned token, so
+// one profile can't reach another's sessions or dashboard.
 export default function ProfileGate({ children }) {
   const { user, login } = useUser();
   const [mode, setMode] = useState("login"); // "login" | "register"
-  const [profiles, setProfiles] = useState([]);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const passwordRef = useRef(null);
-
-  useEffect(() => {
-    if (user) return;
-    let active = true;
-    setLoading(true);
-    listUsers()
-      .then((list) => { if (active) setProfiles(list || []); })
-      .catch(() => { if (active) setProfiles([]); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [user]);
 
   if (user) return children;
 
   const switchMode = (next) => {
     setMode(next);
     setError("");
-  };
-
-  // Tapping a known profile fills its name and jumps to the password field.
-  const pickProfile = (p) => {
-    setName(p.name);
-    setError("");
-    passwordRef.current?.focus();
   };
 
   const handleSubmit = async (e) => {
@@ -114,45 +94,6 @@ export default function ProfileGate({ children }) {
           {toggleBtn("register", "Create account")}
         </div>
 
-        {mode === "login" &&
-          (loading ? (
-            <div className="loading-spinner"></div>
-          ) : profiles.length > 0 ? (
-            <div className="profile-list">
-              {profiles.map((p) => {
-                const selected =
-                  p.name.toLowerCase() === name.trim().toLowerCase();
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="profile-chip"
-                    onClick={() => pickProfile(p)}
-                    style={
-                      selected
-                        ? {
-                            borderColor: "var(--accent-brand)",
-                            background: "var(--accent-amber-bg)",
-                            boxShadow: "var(--ring)",
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className="profile-avatar">
-                      {p.name.charAt(0).toUpperCase()}
-                    </span>
-                    <span className="profile-name">{p.name}</span>
-                    <span className="profile-count">{p.session_count} sessions</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="profile-empty">
-              No profiles yet — switch to <strong>Create account</strong> to make the first one.
-            </p>
-          ))}
-
         <form className="profile-form" onSubmit={handleSubmit}>
           <input
             className="profile-input"
@@ -165,8 +106,6 @@ export default function ProfileGate({ children }) {
             autoFocus
           />
           <input
-            id="pg-password"
-            ref={passwordRef}
             className="profile-input"
             type="password"
             placeholder={
