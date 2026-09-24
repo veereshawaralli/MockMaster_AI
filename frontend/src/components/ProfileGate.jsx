@@ -177,7 +177,7 @@ export default function ProfileGate({ children }) {
             maxLength={128}
             autoComplete={mode === "register" ? "new-password" : "current-password"}
           />
-          <button type="submit" className="btn-primary" disabled={!canSubmit}>
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
             {busy
               ? mode === "register"
                 ? "Creating…"

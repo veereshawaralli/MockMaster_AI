@@ -657,6 +657,14 @@ button { font-family: inherit; cursor: pointer; }
 }
 .profile-input:focus { outline: none; border-color: var(--accent-brand); }
 .profile-input::placeholder { color: var(--text-muted); }
+/* Submit sits flush with the inputs: same full width and vertical rhythm, with a
+   little extra top gap so it reads as the action, not another field. */
+.profile-form .btn {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+}
 .profile-error { margin-top: 0.75rem; font-size: 0.85rem; color: var(--accent-red); }
 
 /* ---------- Motion ---------- */
