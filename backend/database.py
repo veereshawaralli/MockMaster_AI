@@ -199,13 +199,27 @@ def init_db():
     if IS_POSTGRES:
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS salt TEXT")
+        # Sessions created before per-user scoping have no user_id column; add it so
+        # inserts that bind a session to its owner succeed. Pre-existing anonymous
+        # rows keep NULL and simply won't appear under any profile.
+        cursor.execute(
+            "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id "
+            "INTEGER REFERENCES users(id) ON DELETE CASCADE"
+        )
     else:
         cursor.execute("PRAGMA table_info(users)")
-        cols = [row["name"] for row in cursor.fetchall()]
-        if "password_hash" not in cols:
+        user_cols = [row["name"] for row in cursor.fetchall()]
+        if "password_hash" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-        if "salt" not in cols:
+        if "salt" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN salt TEXT")
+        cursor.execute("PRAGMA table_info(sessions)")
+        session_cols = [row["name"] for row in cursor.fetchall()]
+        if "user_id" not in session_cols:
+            cursor.execute(
+                "ALTER TABLE sessions ADD COLUMN user_id "
+                "INTEGER REFERENCES users(id) ON DELETE CASCADE"
+            )
 
     conn.commit()
     conn.close()
