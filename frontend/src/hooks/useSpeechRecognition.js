@@ -4,7 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * Hook for browser-native speech recognition (Web Speech API).
  * Returns real-time transcript (final + interim) and controls.
  */
-export default function useSpeechRecognition() {
+export default function useSpeechRecognition(lang) {
+  // Default to the browser's own locale (e.g. en-IN, en-GB) so the recognizer
+  // loads the right accent model instead of always assuming US English — a
+  // common reason spoken answers come back mis-transcribed.
+  const recognitionLang =
+    lang || (typeof navigator !== "undefined" && navigator.language) || "en-US";
+
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -12,6 +18,9 @@ export default function useSpeechRecognition() {
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef("");
   const interimTranscriptRef = useRef("");
+  // Resolver for a pending stopListening() promise; called once the engine has
+  // ended and flushed its final (corrected) result.
+  const pendingStopResolveRef = useRef(null);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -21,7 +30,8 @@ export default function useSpeechRecognition() {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = "en-US";
+      recognition.maxAlternatives = 1;
+      recognition.lang = recognitionLang;
 
       recognition.onresult = (event) => {
         let interim = "";
@@ -55,8 +65,17 @@ export default function useSpeechRecognition() {
           try {
             recognition.start();
           } catch (e) { /* ignore */ }
-        } else {
-          setIsListening(false);
+          return;
+        }
+        setIsListening(false);
+        // The engine only ends after delivering the last utterance as a final
+        // result, so any waiting stopListening() now gets the corrected text.
+        const resolve = pendingStopResolveRef.current;
+        if (resolve) {
+          pendingStopResolveRef.current = null;
+          resolve(
+            (finalTranscriptRef.current + " " + interimTranscriptRef.current).trim()
+          );
         }
       };
 
@@ -69,7 +88,7 @@ export default function useSpeechRecognition() {
         try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
       }
     };
-  }, []);
+  }, [recognitionLang]);
 
   const startListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -87,12 +106,34 @@ export default function useSpeechRecognition() {
     }
   }, []);
 
+  // Returns a promise that resolves with the FINAL transcript. It waits for the
+  // engine to end (which flushes its corrected result) rather than reading the
+  // rough interim guess — that mismatch was what made answers come back as
+  // "I said X, it wrote Y".
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current._shouldListen = false;
-      try { recognitionRef.current.stop(); } catch (e) { /* ignore */ }
-      setIsListening(false);
-    }
+    const rec = recognitionRef.current;
+    if (!rec) return Promise.resolve("");
+    rec._shouldListen = false;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        pendingStopResolveRef.current = null;
+        setIsListening(false);
+        resolve(
+          (finalTranscriptRef.current + " " + interimTranscriptRef.current).trim()
+        );
+      };
+      pendingStopResolveRef.current = finish;
+      // Fallback in case onend is slow to fire or doesn't fire at all.
+      setTimeout(finish, 600);
+      try {
+        rec.stop();
+      } catch {
+        finish();
+      }
+    });
   }, []);
 
   const resetTranscript = useCallback(() => {

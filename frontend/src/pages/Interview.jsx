@@ -85,13 +85,14 @@ export default function Interview() {
 
   // Stop recording and analyze
   const stopRecording = async () => {
-    speech.stopListening();
     audio.stopAnalyzing();
     timer.stop();
     setStage(STAGES.ANALYZING);
 
-    // Use getTranscript() to avoid stale closure — reads from ref, not state
-    const transcript = speech.getTranscript() || "";
+    // Wait for the recognizer to flush its final, corrected transcript instead
+    // of grabbing the rough interim text (which often differed from what was
+    // actually said).
+    const transcript = (await speech.stopListening()) || "";
     const stressReport = audio.getStressReport();
     const fillerData = detectFillers(transcript);
     console.log("Transcript captured:", transcript);
