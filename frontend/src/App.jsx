@@ -9,6 +9,7 @@ import ProfileGate from "./components/ProfileGate";
 // analysis stack. Neither is needed for first paint on "/".
 const Interview = lazy(() => import("./pages/Interview"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 // Create Theme Context
 export const ThemeContext = createContext();
@@ -32,6 +33,7 @@ function ProfileChip() {
 
 function AppShell() {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useUser();
   return (
     <>
       {/* Navbar */}
@@ -52,6 +54,11 @@ function AppShell() {
             <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               📊 Dashboard
             </NavLink>
+            {user?.is_admin && (
+              <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+                🛡️ Admin
+              </NavLink>
+            )}
           </div>
 
           <ProfileChip />
@@ -86,6 +93,7 @@ function AppShell() {
           <Route path="/" element={<Home />} />
           <Route path="/interview" element={<Interview />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </Suspense>
     </>

@@ -66,6 +66,22 @@ export const adaptDifficulty = (current, scores) =>
 export const getDashboard = () =>
   API.get("/api/dashboard").then((r) => r.data);
 
+// Admin (require an admin bearer token; the backend returns 403 otherwise)
+export const adminGetUsers = () =>
+  API.get("/api/admin/users").then((r) => r.data);
+
+export const adminGetStats = () =>
+  API.get("/api/admin/stats").then((r) => r.data);
+
+export const adminGetUserSessions = (userId) =>
+  API.get(`/api/admin/users/${userId}/sessions`).then((r) => r.data);
+
+export const adminResetPassword = (userId, password) =>
+  API.post(`/api/admin/users/${userId}/password`, { password }).then((r) => r.data);
+
+export const adminDeleteUser = (userId) =>
+  API.delete(`/api/admin/users/${userId}`).then((r) => r.data);
+
 // Topics & Difficulties
 export const getTopics = () =>
   API.get("/api/topics").then((r) => r.data);

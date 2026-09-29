@@ -98,6 +98,7 @@ def init_db():
                 name TEXT NOT NULL UNIQUE,
                 password_hash TEXT,
                 salt TEXT,
+                is_admin BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -151,6 +152,7 @@ def init_db():
                 name TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 password_hash TEXT,
                 salt TEXT,
+                is_admin INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT (datetime('now'))
             );
 
@@ -199,6 +201,7 @@ def init_db():
     if IS_POSTGRES:
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS salt TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
         # Sessions created before per-user scoping have no user_id column; add it so
         # inserts that bind a session to its owner succeed. Pre-existing anonymous
         # rows keep NULL and simply won't appear under any profile.
@@ -213,6 +216,8 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
         if "salt" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN salt TEXT")
+        if "is_admin" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
         cursor.execute("PRAGMA table_info(sessions)")
         session_cols = [row["name"] for row in cursor.fetchall()]
         if "user_id" not in session_cols:
@@ -223,6 +228,10 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+    # Bootstrap the admin from the environment (see seed_admin), so the very first
+    # admin can exist without an admin-only screen to create it.
+    seed_admin()
 
 
 # --- Password + token auth ---
@@ -236,6 +245,47 @@ def _hash_password(password: str, salt: str) -> str:
         "sha256", password.encode("utf-8"), bytes.fromhex(salt), _PBKDF2_ITERATIONS
     )
     return dk.hex()
+
+
+def seed_admin():
+    """Ensure an admin profile exists, driven entirely by the environment.
+
+    Reads ADMIN_USERNAME and ADMIN_PASSWORD. When both are set, the named
+    profile is created if missing and always marked as admin, and its password
+    is (re)set to ADMIN_PASSWORD — so the env vars are the single source of
+    truth and rotating them rotates the credentials. With the vars absent, this
+    is a no-op, so local dev without them simply has no admin.
+    """
+    name = (os.getenv("ADMIN_USERNAME") or "").strip()
+    password = os.getenv("ADMIN_PASSWORD") or ""
+    if not name or not password:
+        return
+    if len(password) < 4:
+        print("[seed_admin] ADMIN_PASSWORD must be at least 4 characters; skipping.")
+        return
+
+    salt = secrets.token_hex(16)
+    password_hash = _hash_password(password, salt)
+    admin_flag = True if IS_POSTGRES else 1
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE LOWER(name) = LOWER(?)", (name,))
+    row = cursor.fetchone()
+    if row:
+        user_id = dict(row)["id"]
+        cursor.execute(
+            "UPDATE users SET password_hash = ?, salt = ?, is_admin = ? WHERE id = ?",
+            (password_hash, salt, admin_flag, user_id),
+        )
+    else:
+        cursor.execute(
+            "INSERT INTO users (name, password_hash, salt, is_admin) VALUES (?, ?, ?, ?)",
+            (name, password_hash, salt, admin_flag),
+        )
+    conn.commit()
+    conn.close()
+    print(f"[seed_admin] Admin profile '{name}' is ready.")
 
 
 def register_user(name: str, password: str) -> dict:
@@ -261,7 +311,7 @@ def register_user(name: str, password: str) -> dict:
     user_id = cursor.lastrowid
     conn.commit()
     conn.close()
-    return {"id": user_id, "name": name}
+    return {"id": user_id, "name": name, "is_admin": False}
 
 
 def verify_login(name: str, password: str):
@@ -277,7 +327,7 @@ def verify_login(name: str, password: str):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, name, password_hash, salt FROM users WHERE LOWER(name) = LOWER(?)",
+        "SELECT id, name, password_hash, salt, is_admin FROM users WHERE LOWER(name) = LOWER(?)",
         (name,),
     )
     row = cursor.fetchone()
@@ -295,12 +345,12 @@ def verify_login(name: str, password: str):
         )
         conn.commit()
         conn.close()
-        return {"id": user["id"], "name": user["name"]}
+        return {"id": user["id"], "name": user["name"], "is_admin": bool(user.get("is_admin"))}
 
     candidate = _hash_password(password, user["salt"])
     conn.close()
     if secrets.compare_digest(candidate, user["password_hash"]):
-        return {"id": user["id"], "name": user["name"]}
+        return {"id": user["id"], "name": user["name"], "is_admin": bool(user.get("is_admin"))}
     return None
 
 
@@ -322,12 +372,16 @@ def get_user_by_token(token: str):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT u.id, u.name FROM auth_tokens t JOIN users u ON u.id = t.user_id WHERE t.token = ?",
+        "SELECT u.id, u.name, u.is_admin FROM auth_tokens t JOIN users u ON u.id = t.user_id WHERE t.token = ?",
         (token,),
     )
     row = cursor.fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    user = dict(row)
+    user["is_admin"] = bool(user.get("is_admin"))
+    return user
 
 
 def delete_token(token: str):
@@ -346,16 +400,84 @@ def get_all_users() -> list:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT u.id, u.name, u.created_at,
+        SELECT u.id, u.name, u.created_at, u.is_admin,
                COUNT(s.id) as session_count
         FROM users u
         LEFT JOIN sessions s ON s.user_id = u.id
-        GROUP BY u.id, u.name, u.created_at
+        GROUP BY u.id, u.name, u.created_at, u.is_admin
         ORDER BY u.created_at ASC
     """)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    users = []
+    for row in rows:
+        u = dict(row)
+        u["is_admin"] = bool(u.get("is_admin"))
+        users.append(u)
+    return users
+
+
+def get_user_basic(user_id: int):
+    """Fetch a single profile {id, name, created_at, is_admin} by id, or None."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, name, created_at, is_admin FROM users WHERE id = ?", (user_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    user = dict(row)
+    user["is_admin"] = bool(user.get("is_admin"))
+    return user
+
+
+def delete_user_admin(user_id: int) -> bool:
+    """Delete a profile and everything it owns. Returns False if no such user.
+
+    Sessions cascade via the user_id FK and answers from sessions, but older
+    rows may predate those constraints, so children are cleared explicitly to
+    avoid orphans on either engine. Tokens go too, forcing an immediate logout.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    cursor.execute(
+        "DELETE FROM answers WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?)",
+        (user_id,),
+    )
+    cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def set_user_password_admin(user_id: int, new_password: str) -> bool:
+    """Reset a profile's password (admin action). Returns False if no such user."""
+    if not new_password or len(new_password) < 4:
+        raise ValueError("Password must be at least 4 characters")
+    salt = secrets.token_hex(16)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    cursor.execute(
+        "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?",
+        (_hash_password(new_password, salt), salt, user_id),
+    )
+    # Force re-login everywhere with the new credentials.
+    cursor.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return True
 
 
 # --- Session CRUD ---
