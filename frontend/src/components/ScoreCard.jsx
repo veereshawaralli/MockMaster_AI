@@ -1,5 +1,6 @@
 import StressMeter from "./StressMeter";
 import use3DTilt from "../hooks/use3DTilt";
+import useCountUp from "../hooks/useCountUp";
 
 const TiltStatCard = ({ children }) => {
   const tiltRef = use3DTilt({ max: 15, scale: 1.05, glare: true });
@@ -10,9 +11,17 @@ const TiltStatCard = ({ children }) => {
  * Comprehensive score card with evaluation results.
  */
 export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
-  if (!data) return null;
+  const evaluation = data?.evaluation;
+  const stress = data?.stress;
+  const fillers = data?.fillers;
+  const transcript = data?.transcript;
 
-  const { evaluation, stress, fillers, transcript } = data;
+  // Count the headline numbers up on reveal so the result lands as a payoff.
+  const scoreCount = useCountUp(evaluation?.score ?? 0);
+  const confidenceCount = useCountUp(stress?.confidence_score ?? 0);
+  const fillerCount = useCountUp(fillers?.total ?? 0);
+
+  if (!data) return null;
 
   const getScoreColor = (score) => {
     if (score >= 80) return "var(--accent-green)";
@@ -33,19 +42,19 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
       <div className="stats-grid">
         <TiltStatCard>
           <div className="stat-value" style={{ color: getScoreColor(evaluation.score) }}>
-            {evaluation.score}
+            {scoreCount}
           </div>
           <div className="stat-label">Answer Score</div>
         </TiltStatCard>
         <TiltStatCard>
           <div className="stat-value" style={{ color: getScoreColor(stress.confidence_score) }}>
-            {stress.confidence_score}%
+            {confidenceCount}%
           </div>
           <div className="stat-label">Confidence</div>
         </TiltStatCard>
         <TiltStatCard>
           <div className="stat-value" style={{ color: fillers.total > 5 ? "var(--accent-red)" : fillers.total > 2 ? "var(--accent-amber)" : "var(--accent-green)" }}>
-            {fillers.total}
+            {fillerCount}
           </div>
           <div className="stat-label">Filler Words</div>
         </TiltStatCard>

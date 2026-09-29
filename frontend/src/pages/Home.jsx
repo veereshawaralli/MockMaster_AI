@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import use3DTilt from "../hooks/use3DTilt";
+import LiveBooth from "../components/LiveBooth";
 
 // Wrapper component to apply 3D tilt individually
 const TiltCard = ({ children }) => {
@@ -13,25 +14,33 @@ const TiltCard = ({ children }) => {
 
 export default function Home() {
   return (
-    <div className="page-container animate-fade-in" style={{ padding: "4rem 1rem", textAlign: "center" }}>
-      <div style={{ maxWidth: "900px", margin: "0 auto", marginBottom: "4rem" }} className="perspective-container">
-        <h1 className="page-title">
-          Rehearse the interview<br />before it counts.
-        </h1>
-        <p className="page-subtitle" style={{ margin: "0.9rem auto 2.5rem" }}>
-          Answer real questions out loud. Get instant, specific feedback on what
-          you said, how confident you sounded, and the filler words to cut.
-        </p>
-
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap", perspective: "1000px" }}>
-          <Link to="/interview" className="btn btn-primary btn-lg">
-            Start Interview
-          </Link>
-          <Link to="/dashboard" className="btn btn-outline btn-lg">
-            View Dashboard
-          </Link>
+    <div className="page-container home-page animate-fade-in">
+      <section className="hero">
+        <div className="hero-copy">
+          <h1 className="hero-title">
+            Rehearse the interview<br />before it counts.
+          </h1>
+          <p className="hero-sub">
+            Answer real questions out loud. Get instant, specific feedback on
+            what you said, how confident you sounded, and the filler words to cut.
+          </p>
+          <div className="hero-cta">
+            <Link to="/interview" className="btn btn-primary btn-lg">
+              Start Interview
+            </Link>
+            <Link to="/dashboard" className="btn btn-outline btn-lg">
+              View Dashboard
+            </Link>
+          </div>
+          <p className="hero-note">
+            Practise HR, DSA, system design and behavioural rounds — questions
+            adapt from Fresher to Staff as you improve.
+          </p>
         </div>
-      </div>
+        <div className="hero-visual">
+          <LiveBooth />
+        </div>
+      </section>
 
       {/* Feature Cards in 3D */}
       <div className="feature-grid stagger-children" style={{ textAlign: "left" }}>
