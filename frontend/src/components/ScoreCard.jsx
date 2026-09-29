@@ -30,7 +30,7 @@ export default function ScoreCard({ data, onNextQuestion, onEndSession }) {
   return (
     <div className="animate-slide-up" style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* Score Header */}
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <div className="stats-grid">
         <TiltStatCard>
           <div className="stat-value" style={{ color: getScoreColor(evaluation.score) }}>
             {evaluation.score}

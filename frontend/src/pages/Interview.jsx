@@ -286,7 +286,7 @@ export default function Interview() {
           <WaveformVisualizer analyser={audio.analyserRef} isActive={true} />
 
           {/* Live Stats */}
-          <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", margin: "1rem 0" }}>
+          <div className="stats-grid" style={{ margin: "1rem 0" }}>
             <div className="stat-card">
               <div className="stat-value stat-cyan" style={{ fontSize: "1.5rem" }}>
                 {audio.volume}

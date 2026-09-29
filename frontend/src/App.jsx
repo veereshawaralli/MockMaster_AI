@@ -43,24 +43,24 @@ function AppShell() {
           <span className="holo-text">MockMaster AI</span>
         </NavLink>
 
-        <div className="navbar-right">
-          <div className="navbar-links">
-            <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              Home
+        <div className="navbar-links">
+          <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+            Home
+          </NavLink>
+          <NavLink to="/interview" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+            🎙️ Interview
+          </NavLink>
+          <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+            📊 Dashboard
+          </NavLink>
+          {user?.is_admin && (
+            <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              🛡️ Admin
             </NavLink>
-            <NavLink to="/interview" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              🎙️ Interview
-            </NavLink>
-            <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              📊 Dashboard
-            </NavLink>
-            {user?.is_admin && (
-              <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-                🛡️ Admin
-              </NavLink>
-            )}
-          </div>
+          )}
+        </div>
 
+        <div className="navbar-controls">
           <ProfileChip />
 
           {/* Theme Toggle Button */}
