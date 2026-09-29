@@ -17,6 +17,21 @@ const STAGES = {
   RESULTS: "results",
 };
 
+// Turn a Web Speech API error code into something an interviewee can act on.
+function speechErrorMessage(error) {
+  switch (error) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Microphone access is blocked. Allow mic access in your browser, then start again.";
+    case "network":
+      return "Speech recognition needs internet — Chrome streams audio to Google. Check your connection and retry.";
+    case "audio-capture":
+      return "No microphone detected. Connect one and start again.";
+    default:
+      return `Speech recognition stopped (${error}). Please stop and try again.`;
+  }
+}
+
 export default function Interview() {
   const navigate = useNavigate();
 
@@ -311,8 +326,13 @@ export default function Interview() {
           <div className="live-transcript">
             {speech.transcript}
             <span className="interim">{speech.interimTranscript}</span>
-            {!speech.transcript && !speech.interimTranscript && (
+            {!speech.transcript && !speech.interimTranscript && !speech.error && (
               <span style={{ color: "var(--text-muted)" }}>Listening... Start speaking</span>
+            )}
+            {speech.error && (
+              <span style={{ color: "var(--accent-red)" }}>
+                ⚠️ {speechErrorMessage(speech.error)}
+              </span>
             )}
           </div>
 

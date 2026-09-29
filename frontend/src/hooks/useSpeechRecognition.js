@@ -5,16 +5,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * Returns real-time transcript (final + interim) and controls.
  */
 export default function useSpeechRecognition(lang) {
-  // Default to the browser's own locale (e.g. en-IN, en-GB) so the recognizer
-  // loads the right accent model instead of always assuming US English — a
-  // common reason spoken answers come back mis-transcribed.
-  const recognitionLang =
-    lang || (typeof navigator !== "undefined" && navigator.language) || "en-US";
+  // Interview answers are spoken in English, so we need an English speech model.
+  // Honor an explicit `lang`; otherwise use the browser locale ONLY when it is
+  // itself an English variant (en-US, en-GB, en-IN…). If the browser/OS locale
+  // is non-English, fall back to en-US — feeding a non-English locale made the
+  // recognizer try to transcribe spoken English with the wrong model and return
+  // nothing, which looked like "listening but no text".
+  const isEnglishLocale = /^en(-|$)/i.test(
+    (typeof navigator !== "undefined" && navigator.language) || ""
+  );
+  const recognitionLang = lang || (isEnglishLocale ? navigator.language : "en-US");
 
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isSupported, setIsSupported] = useState(false);
+  const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef("");
   const interimTranscriptRef = useRef("");
@@ -54,9 +60,20 @@ export default function useSpeechRecognition(lang) {
 
       recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
-        if (event.error !== "no-speech") {
-          setIsListening(false);
+        // Benign: a quiet gap, or our own stop() — keep going / let onend handle it.
+        if (event.error === "no-speech" || event.error === "aborted") return;
+
+        // Chosen locale can't be loaded: retry once on universal English.
+        if (event.error === "language-not-supported" && recognition.lang !== "en-US") {
+          recognition.lang = "en-US";
+          return; // onend restarts with en-US since _shouldListen stays true
         }
+
+        // Real failure (network, not-allowed, audio-capture…): stop the restart
+        // loop and surface it instead of spinning silently on "Listening…".
+        if (recognitionRef.current) recognitionRef.current._shouldListen = false;
+        setError(event.error);
+        setIsListening(false);
       };
 
       recognition.onend = () => {
@@ -96,6 +113,7 @@ export default function useSpeechRecognition(lang) {
       interimTranscriptRef.current = "";
       setTranscript("");
       setInterimTranscript("");
+      setError(null);
       recognitionRef.current._shouldListen = true;
       try {
         recognitionRef.current.start();
@@ -154,6 +172,7 @@ export default function useSpeechRecognition(lang) {
     transcript,
     interimTranscript,
     isSupported,
+    error,
     startListening,
     stopListening,
     resetTranscript,
